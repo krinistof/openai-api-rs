@@ -6,7 +6,7 @@ use crate::v1::audio::{
     AudioTranscriptionRequest, AudioTranscriptionResponse, AudioTranslationRequest,
     AudioTranslationResponse,
 };
-use crate::v1::chat_completion::{ChatCompletionRequest, ChatCompletionResponse};
+use crate::v1::chat_completion::{ChatCompletionRequest, ChatCompletionResponse, ChatCompletionMessage};
 use crate::v1::completion::{CompletionRequest, CompletionResponse};
 use crate::v1::edit::{EditRequest, EditResponse};
 use crate::v1::embedding::{EmbeddingRequest, EmbeddingResponse};
@@ -272,6 +272,26 @@ impl Client {
         let r = res.json::<ChatCompletionResponse>();
         match r {
             Ok(r) => Ok(r),
+            Err(e) => Err(self.new_error(e)),
+        }
+    }
+
+    pub fn continue_chat(
+        &self,
+        req: &mut ChatCompletionRequest,
+    ) -> Result<ChatCompletionResponse, APIError> {
+        let res = self.post("/chat/completions", &req)?;
+        match res.json::<ChatCompletionResponse>() {
+            Ok(reply) => {
+                let message = &reply.choices[0].message;
+
+                //TODO fix that with non-string intermed, or merge of two structs:
+                let raw = toml::to_string(message).unwrap();
+                let message: ChatCompletionMessage = toml::from_str(&raw).unwrap();
+
+                req.messages.push(message);
+                Ok(reply)
+            },
             Err(e) => Err(self.new_error(e)),
         }
     }

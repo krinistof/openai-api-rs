@@ -6,14 +6,14 @@ use std::collections::HashMap;
 use crate::impl_builder_methods;
 use crate::v1::common;
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum FunctionCallType {
     None,
     Auto,
     Function { name: String },
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ChatCompletionRequest {
     pub model: String,
     pub messages: Vec<ChatCompletionMessage>,
