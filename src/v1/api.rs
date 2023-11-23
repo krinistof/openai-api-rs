@@ -6,7 +6,7 @@ use crate::v1::audio::{
     AudioTranscriptionRequest, AudioTranscriptionResponse, AudioTranslationRequest,
     AudioTranslationResponse,
 };
-use crate::v1::chat_completion::{ChatCompletionRequest, ChatCompletionResponse, ChatCompletionMessage};
+use crate::v1::chat_completion::{FunctionCall, ChatCompletionRequest, ChatCompletionResponse,ChatCompletionMessageForResponse,  ChatCompletionMessage, ChatCompletionChoice};
 use crate::v1::completion::{CompletionRequest, CompletionResponse};
 use crate::v1::edit::{EditRequest, EditResponse};
 use crate::v1::embedding::{EmbeddingRequest, EmbeddingResponse};
@@ -280,16 +280,39 @@ impl Client {
         &self,
         req: &mut ChatCompletionRequest,
     ) -> Result<ChatCompletionResponse, APIError> {
+        dbg!(&req);
         let res = self.post("/chat/completions", &req)?;
         match res.json::<ChatCompletionResponse>() {
             Ok(reply) => {
-                let message = &reply.choices[0].message;
+                dbg!(&reply);
+                match &reply.choices[0] {
+                    ChatCompletionChoice {
+                        message,
+                        ..
+                    } => {
+                        if let ChatCompletionMessageForResponse {
+                            function_call: Some(FunctionCall {
+                                name: Some(name),
+                                arguments: Some(
+                                    args
+                                ),
+                            }),
+                            ..
+                        } = message {
+                            if name == "execute_rust" {
+                                dbg!(args);
+                            }
+                        } else {
+                            //TODO fix that with non-string intermed, or merge of two structs:
+                            let raw = serde_json::to_string(message).unwrap();
+                            let new: ChatCompletionMessage = serde_json::from_str(&raw).unwrap();
 
-                //TODO fix that with non-string intermed, or merge of two structs:
-                let raw = toml::to_string(message).unwrap();
-                let message: ChatCompletionMessage = toml::from_str(&raw).unwrap();
+                            req.messages.push(new);
+                        }
+ 
+                    }
+                }
 
-                req.messages.push(message);
                 Ok(reply)
             },
             Err(e) => Err(self.new_error(e)),
