@@ -1,25 +1,33 @@
+use std::{env, fs::File, io::{Read, Write}};
 use openai_api_rs::v1::api::Client;
-use openai_api_rs::v1::chat_completion::{self, ChatCompletionRequest};
-use openai_api_rs::v1::common::GPT4;
-use std::env;
+use dotenv::dotenv;
+
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::new(env::var("OPENAI_API_KEY").unwrap().to_string());
+    dotenv().ok();
 
-    let req = ChatCompletionRequest::new(
-        GPT4.to_string(),
-        vec![chat_completion::ChatCompletionMessage {
-            role: chat_completion::MessageRole::user,
-            content: String::from("What is Bitcoin?"),
-            name: None,
-            function_call: None,
-        }],
-    );
+    let client = Client::new(env::var("OPENAI_API_KEY").unwrap().into());
 
-    let result = client.chat_completion(req)?;
-    println!("{:?}", result.choices[0].message.content);
+    let args: Vec<_> = env::args().collect();
+    let Some(path) = args.get(1) else {
+        return Err("Not path given!".into());
+    };
+
+    let mut file = File::open(path)?;
+
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?;
+
+    let mut req = toml::from_str(&contents)?;
+
+    client.continue_chat(&mut req)?;
+
+    let mut file = File::options()
+        .write(true)
+        .truncate(true)
+        .open(path)?;
+
+    file.write_all(toml::to_string(&req)?.as_bytes())?;
 
     Ok(())
 }
-
-// OPENAI_API_KEY=xxxx cargo run --package openai-api-rs --example chat_completion

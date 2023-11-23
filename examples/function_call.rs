@@ -51,8 +51,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .function_call(FunctionCallType::Auto);
 
     // debug reuqest json
-    // let serialized = serde_json::to_string(&req).unwrap();
-    // println!("{}", serialized);
+    let serialized = serde_json::to_string_pretty(&req).unwrap();
+    println!("{}", serialized);
 
     let result = client.chat_completion(req)?;
 
